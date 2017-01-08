@@ -44,3 +44,11 @@ class RelationshipsItem(Item):
     """ 用户关系，只保留与关注的关系 """
     Host1 = Field()
     Host2 = Field()  # 被关注者的ID
+
+class CommentTextItem(Item):
+    _id = Field()  # 用户ID-微博ID-评论序号
+    ID = Field()  # 用户ID-微博ID
+    commentUserName = Field()
+    PubTime = Field()  # 发表时间
+    Content = Field()  # 微博内容
+    Like = Field()  # 点赞数

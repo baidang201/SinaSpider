@@ -6,7 +6,7 @@
 # ------------------------------------------
 
 import pymongo
-from items import InformationItem, TweetsItem, RelationshipsItem
+from items import InformationItem, TweetsItem, RelationshipsItem,CommentTextItem
 
 
 class MongoDBPipleline(object):
@@ -16,6 +16,7 @@ class MongoDBPipleline(object):
         self.Information = db["Information"]
         self.Tweets = db["Tweets"]
         self.Relationships = db["Relationships"]
+        self.CommentText = db["CommentTexts"]
 
     def process_item(self, item, spider):
         """ 判断item的类型，并作相应的处理，再入数据库 """
@@ -33,5 +34,11 @@ class MongoDBPipleline(object):
             try:
                 self.Information.insert(dict(item))
             except Exception:
+                pass
+        elif isinstance(item, CommentTextItem):
+            try:
+                self.CommentText.insert(dict(item))
+            except Exception, ee:
+                print "#######get commentTextItem ex", ee
                 pass
         return item

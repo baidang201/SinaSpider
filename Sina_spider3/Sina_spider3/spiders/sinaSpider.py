@@ -15,7 +15,7 @@ from Sina_spider3.weiboID import weiboID
 from Sina_spider3.scrapy_redis.spiders import RedisSpider
 from scrapy.selector import Selector
 from scrapy.http import Request
-from Sina_spider3.items import TweetsItem, InformationItem, RelationshipsItem
+from Sina_spider3.items import TweetsItem, InformationItem, RelationshipsItem, CommentTextItem
 
 reload(sys)
 sys.setdefaultencoding('utf8')
@@ -105,8 +105,9 @@ class Spider(RedisSpider):
         else:
             yield informationItem
         yield Request(url="http://weibo.cn/%s/profile?filter=1&page=1" % ID, callback=self.parse_tweets, dont_filter=True)
-        yield Request(url="http://weibo.cn/%s/follow" % ID, callback=self.parse_relationship, dont_filter=True)
-        yield Request(url="http://weibo.cn/%s/fans" % ID, callback=self.parse_relationship, dont_filter=True)
+        #todo(liyh)stop get relationships
+        #yield Request(url="http://weibo.cn/%s/follow" % ID, callback=self.parse_relationship, dont_filter=True)
+        #yield Request(url="http://weibo.cn/%s/fans" % ID, callback=self.parse_relationship, dont_filter=True)
 
     def parse_tweets(self, response):
         """ 抓取微博数据 """
@@ -114,7 +115,7 @@ class Spider(RedisSpider):
         ID = re.findall('(\d+)/profile', response.url)[0]
         divs = selector.xpath('body/div[@class="c" and @id]')
         for div in divs:
-            try:
+            try:                
                 tweetsItems = TweetsItem()
                 id = div.xpath('@id').extract_first()  # 微博ID
                 content = div.xpath('div/span[@class="ctt"]//text()').extract()  # 微博内容
@@ -123,6 +124,11 @@ class Spider(RedisSpider):
                 transfer = re.findall('转发\[(\d+)\]'.decode('utf8'), div.extract())  # 转载数
                 comment = re.findall('评论\[(\d+)\]'.decode('utf8'), div.extract())  # 评论数
                 others = div.xpath('div/span[@class="ct"]/text()').extract()  # 求时间和使用工具（手机或平台）
+
+                if int(comment[0]) > 0:                    
+                    myurl =  div.xpath('div/a[@class="cc"]/@href').extract()
+                    print "@@@@@@@@@@@has a comment13 url is: ", myurl[0]
+                    yield Request(url=myurl[0], callback=self.parse_comment, dont_filter=True)
 
                 tweetsItems["_id"] = ID + "-" + id
                 tweetsItems["ID"] = ID
@@ -172,3 +178,59 @@ class Spider(RedisSpider):
         next_url = selector.xpath('//a[text()="下页"]/@href'.decode('utf8')).extract()
         if next_url:
             yield Request(url=self.host + next_url[0], callback=self.parse_relationship, dont_filter=True)
+
+
+    '''
+    c = re.sub(r"<img(.*?)>",'[表情]',b) #去掉图片表情  
+    d = re.sub(r"<span(.*?)span>",'',c)  
+    pagecont[t] = re.sub(r"\\t|:|：",'',d)  #去掉最后的/t和最前的冒号  
+    '''
+    def parse_comment(self, response):
+        """打开url爬取里面的评论"""
+        selector = Selector(response)
+        
+        print "@@@@@in parse_comment"
+        #http://weibo.cn/comment/EpslktAGW?uid=1496814565&rl=0&gid=10001#cmtfrm
+        myUrl = response.url
+
+        weibo_userID = ""
+        userID = ""
+        cooridinates = re.findall('comment/(.*?)\?uid', myUrl)
+        if cooridinates:
+            weibo_userID = cooridinates[0]
+
+        
+        cooridinates = re.findall('uid=(\d+)', myUrl)
+        if cooridinates:
+            userID = cooridinates[0]
+            weibo_userID = userID + "-" +weibo_userID
+            print weibo_userID
+
+
+        divs = selector.xpath('body/div[@class="c" and @id]')
+        count = 0
+        for div in divs:
+            try:
+                devId = div.xpath('@id').extract_first()
+                if "M" == devId[0]:
+                    continue
+
+                commentUserName = div.xpath('a[1]/text()').extract()                      
+                commentTextContent = div.xpath('span[@class="ctt"]//text()').extract()
+                commentLike = re.findall('赞\[(\d+)\]'.decode('utf8'), div.extract())  # 点赞数
+
+                commentTextItem = CommentTextItem()
+                commentTextItem["_id"] = weibo_userID + '-'+ str(count)
+                commentTextItem["ID"] = weibo_userID
+                commentTextItem["commentUserName"] = commentUserName
+                commentTextItem["Content"] = commentTextContent
+                commentTextItem["Like"] = int(commentLike[0])
+
+
+                yield commentTextItem
+                
+                count = count + 1
+            except Exception, e:
+                print e
+                pass
+

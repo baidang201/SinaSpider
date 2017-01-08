@@ -124,6 +124,8 @@ class SpiderSimpleQueue(Base):
                     cb = getattr(self.spider, "parse_tweets")
                 elif "/info" in url:
                     cb = getattr(self.spider, "parse_information")
+                elif "/comment" in url:
+                    cb = getattr(self.spider, "parse_comment")
                 else:
                     raise ValueError("Method not found in: %s( URL:%s )" % (self.spider, url))
                 return Request(url="http://weibo.cn%s" % url, callback=cb)
