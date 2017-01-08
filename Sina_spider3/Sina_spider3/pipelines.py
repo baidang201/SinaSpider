@@ -159,9 +159,6 @@ class MysqlDBPipeline(object):
                 print("reconnect")
                 
         return item
-    
->>>>>>> origin/master
-
 
 class MongoDBPipeline(object):
     def __init__(self):
