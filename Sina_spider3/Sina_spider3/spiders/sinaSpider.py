@@ -232,5 +232,10 @@ class Spider(RedisSpider):
                 count = count + 1
             except Exception, e:
                 print e
-                pass
+        next_url = selector.xpath('//*[@id="pagelist"]/form/div/a[text()="下页"]/@href'.decode('utf8')).extract()
+        if next_url:
+            print "has next comment", next_url
+            yield Request(url=self.host + next_url[0], callback=self.parse_comment, dont_filter=True)
+                
+        
 
